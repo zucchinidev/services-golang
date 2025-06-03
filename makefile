@@ -34,7 +34,8 @@ NAMESPACE       := sales-system
 SALES_APP       := sales
 AUTH_APP        := auth
 BASE_IMAGE_NAME := localhost/sales
-VERSION         := 0.0.1
+VERSION         := 0.0.1-$(shell git rev-parse --short HEAD)
+# Some containers systems needs a url-based image name
 SALES_IMAGE     := $(BASE_IMAGE_NAME)/$(SALES_APP):$(VERSION)
 METRICS_IMAGE   := $(BASE_IMAGE_NAME)/metrics:$(VERSION)
 AUTH_IMAGE      := $(BASE_IMAGE_NAME)/$(AUTH_APP):$(VERSION)
@@ -42,51 +43,18 @@ AUTH_IMAGE      := $(BASE_IMAGE_NAME)/$(AUTH_APP):$(VERSION)
 # ==============================================================================
 # Running from within k8s/kind
 
+build: sales
+
+sales:
+	docker build \
+		--build-arg BUILD_REF=$(VERSION) \
+		--build-arg BUILD_DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
+		-t $(SALES_IMAGE) \
+		-f zarf/docker/dockerfile.sales \
+		.
+
 dev-up:
-	# System configuration for Kubernetes cluster performance and stability
-	# Increase the maximum number of inotify instances per user
-	# This helps with file system monitoring and prevents "too many open files" errors
-	sudo sysctl -w fs.inotify.max_user_instances=524288
 
-	# Increase the maximum number of inotify watches per user
-	# Required for proper file system event monitoring in Kubernetes
-	sudo sysctl -w fs.inotify.max_user_watches=524288
-
-	# Set the maximum number of file handles that can be opened system-wide
-	# Critical for handling many concurrent connections in Kubernetes
-	sudo sysctl -w fs.file-max=2097152
-
-	# Increase the maximum number of memory map areas a process can use
-	# Required for proper memory management in containerized applications
-	sudo sysctl -w vm.max_map_count=262144
-
-	# Increase the maximum number of connection requests that can be queued
-	# Helps prevent connection drops under high load
-	sudo sysctl -w net.core.somaxconn=32768
-
-	# Increase the maximum number of remembered connection requests
-	# Improves handling of TCP connection requests
-	sudo sysctl -w net.ipv4.tcp_max_syn_backlog=8192
-
-	# Expand the range of local ports available for outgoing connections
-	# Prevents port exhaustion in high-traffic scenarios
-	sudo sysctl -w net.ipv4.ip_local_port_range="1024 65535"
-
-	# Set TCP connection timeout to 30 seconds
-	# Helps clean up stale connections more quickly
-	sudo sysctl -w net.ipv4.tcp_fin_timeout=30
-
-	# Set TCP keepalive time to 30 minutes
-	# Helps maintain connection health
-	sudo sysctl -w net.ipv4.tcp_keepalive_time=1800
-
-	# Set number of TCP keepalive probes to 5
-	# Determines how many times to retry before dropping a connection
-	sudo sysctl -w net.ipv4.tcp_keepalive_probes=5
-
-	# Set TCP keepalive interval to 15 seconds
-	# Time between keepalive probes
-	sudo sysctl -w net.ipv4.tcp_keepalive_intvl=15
 
 	kind create cluster \
 		--image $(KIND) \
@@ -95,17 +63,51 @@ dev-up:
 
 	kubectl wait --timeout=120s --namespace=local-path-storage --for=condition=Available deployment/local-path-provisioner
 
-
 dev-down:
 	kind delete cluster --name $(KIND_CLUSTER)
 
 dev-status-all:
 	kubectl get nodes -o wide
-	kubectl get svc -o wide
+	kubectl get svc -o wide --all-namespaces
 	kubectl get pods -o wide --watch --all-namespaces
 
 dev-status:
-	watch -n 2 kubectl get pods -o wide --all-namespaces
+	kubectl get pods -o wide --all-namespaces --watch
+
+# ==============================================================================
+
+dev-update-kustomization:
+	# Update the dev kustomization file with the current git reference
+	# This ensures the deployment uses the correct image tag that matches the built image
+	sed -i '' 's|newTag:.*|newTag: $(VERSION)|' zarf/k8s/dev/sales/kustomization.yaml
+
+dev-load:
+	# Load the sales service image into the Kind cluster
+	# - kind: The Kubernetes IN Docker tool
+	# - load: Command to import an image from local storage (works offline)
+	# - docker-image: Specifies we're loading a Docker image
+	# - $(SALES_IMAGE): The sales service image reference
+	# - --name: Specify which cluster to load into
+	# - $(KIND_CLUSTER): The name of our Kind cluster
+	kind load docker-image $(SALES_IMAGE) --name $(KIND_CLUSTER)
+
+dev-apply: dev-update-kustomization
+	kustomize build zarf/k8s/dev/sales | kubectl apply -f -
+	kubectl wait pods --namespace=$(NAMESPACE) --for=condition=Ready --timeout=120s --selector app=$(SALES_APP)
+
+dev-restart:
+	kubectl rollout restart deployment $(SALES_APP) --namespace=$(NAMESPACE)
+
+dev-update: build dev-load dev-apply
+
+dev-logs:
+	kubectl logs --namespace=$(NAMESPACE) --selector app=$(SALES_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run apis/tooling/logfmt/main.go
+
+dev-describe-deployment:
+	kubectl describe deployment $(SALES_APP) --namespace=$(NAMESPACE)
+
+dev-describe-sales:
+	kubectl describe pod --selector app=$(SALES_APP) --namespace=$(NAMESPACE)
 
 # ==============================================================================
 # Modules support
