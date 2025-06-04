@@ -12,4 +12,4 @@ patches:
 images:
 - name: sales-image
   newName: localhost/sales/sales
-  newTag: 0.0.1-5f128d7
+  newTag: 0.0.1-bb04912
