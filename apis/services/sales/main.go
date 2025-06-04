@@ -115,14 +115,61 @@ func run(ctx context.Context, log *logger.Logger) error {
 	// -------------------------------------------------------------------------
 
 	// -------------------------------------------------------------------------
-	// Shutdown
+	// Start API Service
 
+	log.Info(ctx, "startup", "status", "initializing V1 API support")
+
+	// We need a buffered channel of size 1 to ensure the signal.Notify goroutine can
+	// always send a signal without blocking, even if we're not ready to receive it yet.
+	// This prevents potential signal loss if multiple signals arrive in quick succession.
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
-	sig := <-shutdown
 
-	log.Info(ctx, "shutdown", "status", "shutdown started", "signal", sig)
-	defer log.Info(ctx, "shutdown", "status", "shutdown completed", "signal", sig)
+	api := http.Server{
+		Addr:         cfg.Web.APIHost,
+		Handler:      nil,
+		ReadTimeout:  cfg.Web.ReadTimeout,
+		WriteTimeout: cfg.Web.WriteTimeout,
+		IdleTimeout:  cfg.Web.IdleTimeout,
+		ErrorLog:     logger.NewStdLogger(log, logger.LevelError),
+	}
+
+	serverErrors := make(chan error, 1)
+
+	// This goroutine is going to be the father of the rest of the goroutines when an HTTP request is made.
+	go func() {
+		log.Info(ctx, "startup", "status", "api router started", "host", api.Addr)
+
+		// This error is a very low level error related to networking. I hope we do not see this error in production.
+		// I've never seen this error in production.
+		serverErrors <- api.ListenAndServe()
+	}()
+
+	// -------------------------------------------------------------------------
+	// Shutdown
+
+	select {
+	case err := <-serverErrors:
+		return fmt.Errorf("server error: %w", err)
+
+	case sig := <-shutdown:
+		log.Info(ctx, "shutdown", "status", "shutdown started", "signal", sig)
+		defer log.Info(ctx, "shutdown", "status", "shutdown completed", "signal", sig)
+
+		// How long are we going to wait for all the goroutines that represent the requests
+		// to finish their execution? It has to be a reasonable amount of time.
+		// Attention!! We are executing this in Kubernetes. We need to be careful with the timeouts.
+		ctx, cancel := context.WithTimeout(ctx, cfg.Web.ShutdownTimeout)
+		defer cancel()
+
+		// This is the graceful shutdown of the server.
+		// Do not accept any more traffic and wait for the requests to finish their execution.
+		if err := api.Shutdown(ctx); err != nil {
+			// If there is any goroutine that is blocked, we need to shut it down everything using force.
+			api.Close()
+			return fmt.Errorf("could not stop server gracefully: %w", err)
+		}
+	}
 
 	return nil
 }
