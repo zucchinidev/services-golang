@@ -14,6 +14,7 @@ import (
 
 	"github.com/ardanlabs/conf/v3"
 	"github.com/zucchini/services-golang/apis/services/api/debug"
+	"github.com/zucchini/services-golang/apis/services/sales/mux"
 	"github.com/zucchini/services-golang/foundation/logger"
 )
 
@@ -127,7 +128,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 
 	api := http.Server{
 		Addr:         cfg.Web.APIHost,
-		Handler:      nil,
+		Handler:      mux.WebAPI(),
 		ReadTimeout:  cfg.Web.ReadTimeout,
 		WriteTimeout: cfg.Web.WriteTimeout,
 		IdleTimeout:  cfg.Web.IdleTimeout,
