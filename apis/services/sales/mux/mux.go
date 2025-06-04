@@ -1,7 +1,11 @@
 // Package mux provides support to bind domain level routes to handlers.
 package mux
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/zucchini/services-golang/apis/services/sales/route/sys/checkapi"
+)
 
 // Every package in this project tries to create a kind of firewall or boundary.
 // We need to organize APIs that communicate with different parts of the system. That's what a package does.
@@ -23,10 +27,7 @@ import "net/http"
 func WebAPI() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /v1/sales", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Hello, World!"))
-	})
+	checkapi.Routes(mux)
 
 	return mux
 }
