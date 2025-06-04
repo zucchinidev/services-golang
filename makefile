@@ -109,12 +109,44 @@ dev-describe-deployment:
 dev-describe-sales:
 	kubectl describe pod --selector app=$(SALES_APP) --namespace=$(NAMESPACE)
 
+
+# ==============================================================================
+# Metrics and Tracing
+
+metrics:
+	go tool expvarmon -ports="localhost:3010" -vars="build,requests,goroutines,errors,panics,mem:memstats.HeapAlloc,mem:memstats.HeapSys,mem:memstats.Sys"
+
+statsviz:
+	open -a "Google Chrome" http://localhost:3010/debug/statsviz
+
 # ==============================================================================
 # Modules support
 
 tidy:
 	go mod tidy
 	go mod vendor
+
+# ==============================================================================
+# Install tools
+# Uses Go 1.24's new tool dependency management
+
+tools-add-expvarmon:
+	go get -tool github.com/divan/expvarmon@latest
+
+tools-add-staticcheck:
+	go get -tool honnef.co/go/tools/cmd/staticcheck@latest
+
+tools-add-govulncheck:
+	go get -tool golang.org/x/vuln/cmd/govulncheck@latest
+
+tools-list:
+	go list tool
+
+tools-upgrade:
+	go get tool
+
+tools-add: tools-add-expvarmon tools-add-staticcheck tools-add-govulncheck
+	@echo "All tools added to go.mod!"
 
 # ==============================================================================
 # Running tests within the local computer
@@ -127,10 +159,10 @@ test-only:
 
 lint:
 	CGO_ENABLED=0 go vet ./...
-	staticcheck -checks=all ./...
+	go tool staticcheck -checks=all ./...
 
 vuln-check:
-	govulncheck ./...
+	go tool govulncheck ./...
 
 test: test-only lint vuln-check
 
