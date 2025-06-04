@@ -3,12 +3,17 @@ package main
 import (
 	"context"
 	"errors"
+	"expvar"
 	"fmt"
+	"net/http"
 	"os"
+	"os/signal"
 	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/ardanlabs/conf/v3"
+	"github.com/zucchini/services-golang/apis/services/api/debug"
 	"github.com/zucchini/services-golang/foundation/logger"
 )
 
@@ -89,7 +94,35 @@ func run(ctx context.Context, log *logger.Logger) error {
 	}
 	log.Info(ctx, "startup", "config", out)
 
+	expvar.NewString("build").Set(cfg.Build)
+
 	// -------------------------------------------------------------------------
+	// Start Debug Service
+
+	go func() {
+		// This is creating an orphane goroutine that will run until the service shuts down.
+		// As a general rule, we don't want to start a goroutine that will be orphaned.
+		// When I say orphaned, it is because I understand that there has to be a kind of parenting
+		// relationship between the goroutine and the service.
+		// In this case, the Debug Service will be ONLY a reading service.
+		// Never change the state of the service.
+		log.Info(ctx, "startup", "debug", "debug v1 router started", "host", cfg.Web.DebugHost)
+		if err := http.ListenAndServe(cfg.Web.DebugHost, debug.Mux()); err != nil {
+			log.Error(ctx, "shutdown", "status", "debug v1 router closed", "host", cfg.Web.DebugHost, "msg", err)
+		}
+	}()
+
+	// -------------------------------------------------------------------------
+
+	// -------------------------------------------------------------------------
+	// Shutdown
+
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-shutdown
+
+	log.Info(ctx, "shutdown", "status", "shutdown started", "signal", sig)
+	defer log.Info(ctx, "shutdown", "status", "shutdown completed", "signal", sig)
 
 	return nil
 }
