@@ -29,3 +29,9 @@ This project follows key architectural principles to maintain clean, maintainabl
 - Avoid interfaces as return types
 - Let callers handle data decoupling
 - Return concrete type pointers for clarity 
+
+### 6. Application Layer
+- App layer must be agnostic to the protocol layer
+- Business logic should be independent of delivery mechanisms
+- Enables flexibility to change protocols without affecting core functionality
+- Promotes clean separation of concerns and testability 
