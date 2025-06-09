@@ -19,21 +19,30 @@ type App struct {
 	// My App is not everything that http.ServeMux is.
 	*http.ServeMux
 	shutdown chan os.Signal
+	mw       []MidHandler
 }
 
 // NewApp creates a new App value that contains the information for the HTTP server.
-func NewApp(shutdown chan os.Signal) *App {
+func NewApp(shutdown chan os.Signal, mw ...MidHandler) *App {
 	return &App{
 		ServeMux: http.NewServeMux(),
 		shutdown: shutdown,
+		mw:       mw,
 	}
 }
 
-func (a *App) HandleFunc(pattern string, handler Handler) {
+func (a *App) HandleFunc(pattern string, handler Handler, mw ...MidHandler) {
+	// local middleware first
+	// This allows us to for example, add an authentication middleware only to this handler.
+	handler = wrapMiddleware(mw, handler)
+	// general middleware afters
+	handler = wrapMiddleware(a.mw, handler)
 
 	h := func(w http.ResponseWriter, r *http.Request) {
 
 		// Put any code here that needs to happen before the handler is called.
+		// Remember, this is a fundational layer. Highly portable.
+		// Do not log here or execute code specific to a handler.
 
 		if err := handler(r.Context(), w, r); err != nil {
 			// Temporary logging.
