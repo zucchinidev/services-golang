@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/zucchini/services-golang/app/mid"
 	"github.com/zucchini/services-golang/foundation/logger"
 	"github.com/zucchini/services-golang/foundation/web"
 )
@@ -16,12 +17,13 @@ func Logger(log *logger.Logger) web.MidHandler {
 		// It will wrap the next handler and add logging functionality.
 		h := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 
-			log.Info(ctx, "request started", "method", r.Method, "path", r.URL.Path)
+			handler := func(ctx context.Context) error {
+				return next(ctx, w, r)
+			}
 
-			err := next(ctx, w, r)
-
-			log.Info(ctx, "request completed", "method", r.Method, "path", r.URL.Path)
-			return err
+			// We do not want to use protocol-specific code in the middleware in the app layer.
+			// So we pass the handler to the app layer and let it handle the request.
+			return mid.Logger(ctx, log, r.URL.Path, r.URL.RawQuery, r.Method, r.RemoteAddr, handler)
 		}
 
 		return h
