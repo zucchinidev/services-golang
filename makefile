@@ -40,7 +40,7 @@ NAMESPACE       := sales-system
 SALES_APP       := sales
 AUTH_APP        := auth
 BASE_IMAGE_NAME := localhost/sales
-VERSION         := 0.0.1-$(shell git rev-parse --short HEAD)
+VERSION         := 0.0.1
 # Some containers systems needs a url-based image name
 SALES_IMAGE     := $(BASE_IMAGE_NAME)/$(SALES_APP):$(VERSION)
 METRICS_IMAGE   := $(BASE_IMAGE_NAME)/metrics:$(VERSION)
@@ -97,7 +97,7 @@ dev-load:
 	# - $(KIND_CLUSTER): The name of our Kind cluster
 	kind load docker-image $(SALES_IMAGE) --name $(KIND_CLUSTER)
 
-dev-apply: dev-update-kustomization
+dev-apply:
 	kustomize build zarf/k8s/dev/sales | kubectl apply -f -
 	kubectl wait pods --namespace=$(NAMESPACE) --for=condition=Ready --timeout=120s --selector app=$(SALES_APP)
 
