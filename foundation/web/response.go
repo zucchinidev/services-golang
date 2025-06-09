@@ -10,6 +10,8 @@ import (
 // We do not need to use json around the project, we can easily change to protobuf or any other format
 // by changing the implementation of this function.
 func Response(ctx context.Context, w http.ResponseWriter, data any, statusCode int) error {
+	setStatusCode(ctx, statusCode)
+
 	if statusCode == http.StatusNoContent {
 		w.WriteHeader(statusCode)
 		return nil

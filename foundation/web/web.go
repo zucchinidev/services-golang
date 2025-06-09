@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 // Handler is a function that can handle a http request within our small little own HTTP
@@ -44,7 +47,14 @@ func (a *App) HandleFunc(pattern string, handler Handler, mw ...MidHandler) {
 		// Remember, this is a fundational layer. Highly portable.
 		// Do not log here or execute code specific to a handler.
 
-		if err := handler(r.Context(), w, r); err != nil {
+		v := &Values{
+			TraceID: uuid.NewString(),
+			Now:     time.Now(),
+		}
+
+		ctx := setValues(r.Context(), v)
+
+		if err := handler(ctx, w, r); err != nil {
 			// Temporary logging.
 			fmt.Println("web.HandleFunc: %w", err)
 			return
