@@ -22,6 +22,9 @@ curl-liveness:
 curl-readiness:
 	curl -il -X GET http://localhost:3000/readiness
 
+curl-test-error:
+	curl -il -X GET http://localhost:3000/testerror
+
 # ==============================================================================
 # Define dependencies
 
@@ -104,7 +107,7 @@ dev-apply:
 dev-restart:
 	kubectl rollout restart deployment $(SALES_APP) --namespace=$(NAMESPACE)
 
-dev-update: build dev-load dev-apply
+dev-update: build dev-load dev-apply dev-restart
 
 dev-logs:
 	kubectl logs --namespace=$(NAMESPACE) --selector app=$(SALES_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run apis/tooling/logfmt/main.go
