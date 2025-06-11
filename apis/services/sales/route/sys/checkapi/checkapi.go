@@ -3,17 +3,27 @@ package checkapi
 
 import (
 	"context"
+	"math/rand"
 	"net/http"
 
+	"github.com/zucchini/services-golang/app/errs"
 	"github.com/zucchini/services-golang/foundation/web"
 )
 
 func liveness(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 
-	return web.Response(ctx, w, map[string]string{"status": "ok"}, http.StatusOK)
+	return web.Respond(ctx, w, map[string]string{"status": "ok"}, http.StatusOK)
 }
 
 func readiness(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 
-	return web.Response(ctx, w, map[string]string{"status": "ok"}, http.StatusOK)
+	return web.Respond(ctx, w, map[string]string{"status": "ok"}, http.StatusOK)
+}
+
+func testErr(ctx context.Context, w http.ResponseWriter, _ *http.Request) error {
+	if n := rand.Intn(100); n%2 == 0 {
+		return errs.Newf(errs.FailedPrecondition, "test error - this error is safe")
+	}
+
+	return web.Respond(ctx, w, map[string]string{"status": "ok"}, http.StatusOK)
 }
