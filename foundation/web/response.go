@@ -6,10 +6,10 @@ import (
 	"net/http"
 )
 
-// Response is a helper function that writes data to the response writer.
+// Respond is a helper function that writes data to the response writer.
 // We do not need to use json around the project, we can easily change to protobuf or any other format
 // by changing the implementation of this function.
-func Response(ctx context.Context, w http.ResponseWriter, data any, statusCode int) error {
+func Respond(ctx context.Context, w http.ResponseWriter, data any, statusCode int) error {
 	setStatusCode(ctx, statusCode)
 
 	if statusCode == http.StatusNoContent {
