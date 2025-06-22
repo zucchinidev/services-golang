@@ -27,3 +27,11 @@ func testErr(ctx context.Context, w http.ResponseWriter, _ *http.Request) error 
 
 	return web.Respond(ctx, w, map[string]string{"status": "ok"}, http.StatusOK)
 }
+
+func testPanic(ctx context.Context, w http.ResponseWriter, _ *http.Request) error {
+	if n := rand.Intn(100); n%2 == 0 {
+		panic("test panic - we are panicking")
+	}
+
+	return web.Respond(ctx, w, map[string]string{"status": "ok"}, http.StatusOK)
+}
