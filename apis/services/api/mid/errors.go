@@ -49,7 +49,7 @@ func Errors(log *logger.Logger) web.MidHandler {
 				errs := err.(errs.Error)
 				// Application layer code to protocol layer code
 				code := codeStatus[errs.Code.Value()]
-				if err := web.Respond(ctx, w, errs, code); err != nil {
+				if err = web.Respond(ctx, w, errs, code); err != nil {
 					return err
 				}
 
