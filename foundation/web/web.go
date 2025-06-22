@@ -1,3 +1,4 @@
+// Package web provides a small HTTP framework for building web applications.
 package web
 
 import (
@@ -47,6 +48,17 @@ func (a *App) HandleFunc(pattern string, handler Handler, mw ...MidHandler) {
 	// general middleware afters
 	handler = wrapMiddleware(a.mw, handler)
 
+	a.ServeMux.HandleFunc(pattern, a.generateHandlerFunc(handler))
+}
+
+// HandleFuncNoMiddleware is a helper function that handles a http request
+// without any middleware.
+func (a *App) HandleFuncNoMiddleware(pattern string, handler Handler) {
+	a.ServeMux.HandleFunc(pattern, a.generateHandlerFunc(handler))
+}
+
+func (a *App) generateHandlerFunc(handler Handler) http.HandlerFunc {
+
 	h := func(w http.ResponseWriter, r *http.Request) {
 
 		// Put any code here that needs to happen before the handler is called.
@@ -78,7 +90,7 @@ func (a *App) HandleFunc(pattern string, handler Handler, mw ...MidHandler) {
 		// Put any code here that needs to happen after the handler is called.
 	}
 
-	a.ServeMux.HandleFunc(pattern, h)
+	return h
 }
 
 // validateError validates the error for special conditions that do not
