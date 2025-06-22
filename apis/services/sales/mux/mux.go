@@ -11,7 +11,13 @@ import (
 )
 
 func WebAPI(shutdown chan os.Signal, log *logger.Logger) *web.App {
-	mux := web.NewApp(shutdown, mid.Logger(log), mid.Errors(log), mid.Panics(log))
+	mux := web.NewApp(
+		shutdown,
+		mid.Logger(log),
+		mid.Errors(log),
+		mid.Metrics(),
+		mid.Panics(), // This should be the last middleware in the chain.
+	)
 
 	checkapi.Routes(mux)
 

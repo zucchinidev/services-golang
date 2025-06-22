@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/zucchini/services-golang/app/errs"
-	"github.com/zucchini/services-golang/app/mid"
+	"github.com/zucchini/services-golang/app/api/errs"
+	"github.com/zucchini/services-golang/app/api/mid"
 	"github.com/zucchini/services-golang/foundation/logger"
 	"github.com/zucchini/services-golang/foundation/web"
 )
