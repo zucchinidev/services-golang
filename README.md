@@ -35,3 +35,17 @@ This project follows key architectural principles to maintain clean, maintainabl
 - Business logic should be independent of delivery mechanisms
 - Enables flexibility to change protocols without affecting core functionality
 - Promotes clean separation of concerns and testability 
+
+
+## Authorization
+
+ 
+We will associate a Private Key with our system and create a signature associated with our data. Every time our data changes, the signature will be different due to the relationship between data and the private key. The data and the signature will be converted into a Base64 Encoded Token (not encrypted, but encoded).
+We will generate a data payload, send it to the server, sign it with our private key, produce a token with information encoded in base64, and pass it to the user. We will instruct the user to pass this token as an authorization header. When the token arrives, we will verify if it is the token we produced and if it was signed with our private key. If not, we will take appropriate action.
+
+Upon completion of these steps, we will proceed with the authorization process. We will retrieve claims from the token to ascertain the user’s identity and delegate the authorization process to the Open Policy Agent system (https://www.openpolicyagent.org/). Instead of implementing the logic in GoLang, we will utilize a separate server called Rigo to execute the functionality. The general approach for this step involves defining middleware that establishes the necessary claims for the user to perform the endpoint operation.
+
+In a production system, I typically advocate against developing our own JWT system. Instead, I recommend using a reputable third-party service that manages user authentication, token generation, and user management. Our system should simply load the public keys for the private keys (pairs) and utilize those public keys for authentication purposes. This approach avoids the need to handle private keys directly, which poses a security concern that we prefer to avoid. However, for educational purposes, we will implement our own system.
+The JWT protocol serves as a fundamental framework for our system, but we will need to add additional logic to enhance its functionality.
+
+However, the JWT protocol authentication process alone is insufficient. Consider the scenario where we wish to restrict access to a user who possesses a valid token. While we could argue that the token has a Time-to-Live (TTL), we must wait until that expiration date. As an alternative and drastic measure, we could invalidate the private key and, consequently, the token. However, this approach would result in the non-effective invalidation of every token, which is not appropriate. Therefore, we require an additional step to address this issue. The JWT protocol authentication process is commonly referred to as Level One authentication, but it falls short of providing comprehensive security. After successful Level One authentication, we, after extracting the user ID from the token, typically proceed to the database verification. Subsequently, we verify whether the user is still enabled within the system.	
