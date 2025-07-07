@@ -27,6 +27,13 @@ curl-test-error:
 
 curl-test-panic:
 	curl -il -X GET http://localhost:3000/testpanic
+admin-genkey:
+	go run apis/tooling/admin/main.go genkey
+
+admin-genjwt:
+	go run apis/tooling/admin/main.go genjwt
+
+admin-tools: admin-genkey admin-genjwt
 
 # ==============================================================================
 # Define dependencies
