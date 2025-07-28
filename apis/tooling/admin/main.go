@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -11,11 +12,20 @@ import (
 	"os"
 	"time"
 
+	_ "embed"
+
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/open-policy-agent/opa/v1/rego"
 )
 
 const (
 	bits = 2048
+)
+
+var (
+	// embedding the Open Policy Agent (OPA) rules for authentication
+	//go:embed rego/authentication.rego
+	opaAuthenticationPolicyRego string
 )
 
 func main() {
@@ -114,13 +124,17 @@ func GenJWT() error {
 	}
 
 	ans1Block := pem.Block{
-		Type:  "RSA PUBLIC KEY",
+		Type:  "PUBLIC KEY",
 		Bytes: ans1Bytes,
 	}
 
 	ans1PEM := pem.EncodeToMemory(&ans1Block)
 
 	fmt.Println(string(ans1PEM))
+
+	if err := checkPolicy(ans1PEM, tokenString, "service project"); err != nil {
+		return fmt.Errorf("unable to check policy: %w", err)
+	}
 
 	return nil
 }
@@ -179,6 +193,59 @@ func GenKey() error {
 
 	fmt.Println("Private Key File: private.pem")
 	fmt.Println("Public Key File: public.pem")
+
+	return nil
+}
+
+func checkPolicy(publicKeyPEM []byte, token string, issuer string) error {
+
+	// ------------------------------------------------------------------------------------------------
+	// Generate the OPA Policy
+	// ------------------------------------------------------------------------------------------------
+
+	ctx := context.Background()
+
+	// ------------------------------------------------------------------------------------------------
+	// Prepare the OPA Policy
+	// ------------------------------------------------------------------------------------------------
+
+	fmt.Println("OPA Authentication Policy:")
+	fmt.Println(opaAuthenticationPolicyRego)
+
+	query, err := rego.New(
+		rego.Query(`x = data.sales.rego.auth`),
+		rego.Module("policy.rego", opaAuthenticationPolicyRego),
+	).PrepareForEval(ctx)
+	if err != nil {
+		return fmt.Errorf("unable to prepare for evaluation: %w", err)
+	}
+
+	// ------------------------------------------------------------------------------------------------
+	// Prepare the input for the OPA Policy
+	// ------------------------------------------------------------------------------------------------
+
+	input := map[string]any{
+		"Key":   string(publicKeyPEM),
+		"Token": token,
+		"ISS":   issuer,
+	}
+
+	results, err := query.Eval(ctx, rego.EvalInput(input))
+	if err != nil {
+		return fmt.Errorf("unable to evaluate policy: %w", err)
+	}
+
+	if len(results) == 0 {
+		return fmt.Errorf("no results")
+	}
+
+	// check the value of the binding x, that is to say, data.sales.rego.auth
+	result, ok := results[0].Bindings["x"].(bool)
+	if !ok || !result {
+		return fmt.Errorf("bindings results[%v] ok[%v]", result, ok)
+	}
+
+	fmt.Println("TOKEN VALIDATION: Policy check passed")
 
 	return nil
 }
