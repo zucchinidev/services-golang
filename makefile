@@ -27,11 +27,31 @@ curl-test-error:
 
 curl-test-panic:
 	curl -il -X GET http://localhost:3000/testpanic
+
+
+# Admin Token
+# export TOKEN=eyJhbGciOiJSUzI1NiIsImtpZCI6ImRjNzVhMzE2LWU4NjItNDVjYS1hNDhiLTBkNjdmMjI5ZDYyYiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzZXJ2aWNlIHByb2plY3QiLCJzdWIiOiI0ODAxYjg1MC1lNzBmLTRiMWYtOGZhNy1kOThhYTJkYWM2ZDEiLCJleHAiOjE3ODgwMjMxOTMsImlhdCI6MTc1NjQ4NzE5MywiUm9sZXMiOlsiQURNSU4iXX0.jMA07zrG8QbJ10lNX-xG9BRKeBFnxiJYWnu2Kk6qamiUmoLyZXSVWtmJwXHbIkXFFIvhvSPtxLFKshbaeIGIWAaQmZ0zaGgAoeM6nS8V0iDN6lBcW53Ij2tEt0mGuGy_Ds4hh34skp_rAp4gB-NK42QIdqA-oflbiGlSnTjpaQbcHBtduOzce3JyLbw9Lo2Om00kOypWjsKnM7Fm1Jylo8WIIXSxfN5JFvGzep7Ss_9qewDrNcC5tga_jGS37sVigI_nRBf0tcuDLBTMjpQ5KD8ACIb7l41SJgC0CsDEiLcL2N4MJ7pOp6saDDjZOnJuCU0zQIm3ruAs3DpW4CuPVA
+# make curl-test-auth
+# to generate the token, use make admin-genjwt {USER OR ADMIN}
+
+
+# USER Token
+# export TOKEN=eyJhbGciOiJSUzI1NiIsImtpZCI6ImRjNzVhMzE2LWU4NjItNDVjYS1hNDhiLTBkNjdmMjI5ZDYyYiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzZXJ2aWNlIHByb2plY3QiLCJzdWIiOiI0ODAxYjg1MC1lNzBmLTRiMWYtOGZhNy1kOThhYTJkYWM2ZDEiLCJleHAiOjE3ODgwMzg4MTgsImlhdCI6MTc1NjUwMjgxOCwiUm9sZXMiOlsiVVNFUiJdfQ.AEZTKMLNYOSfLPXjyL8gk4sfTuxeD44dZJ5xlTJREsp2cSkpj0WaMZo-W-WIarwsU6ZCFjm1xhDKnPaXddUlrn53Exk-5EUMMWfvS73P9Pz4yEppHr02-jsG0Qj_S1Gw8B085BjUfxMsaH5imTcAEV8YPnrEsFwFOM7Z_bk0Lv_uRPWImL0x2EG5iw8uEqqVnP1_cDzg9u6emMDOWG4zOco3fVDeUmYFgmTbOizRM-fyPhQr_Mbt43TO_65rHH8szYIAR8LwtpFiC7frTVW9tByevPwYf_7rDYlRNoSJfckHuypt2jk3--zZyCF6B5veY_pARK7ArIIpJR5tsy5MNA
+
+curl-test-auth:
+	curl -il \
+	-H "Authorization: Bearer ${TOKEN}" "http://localhost:3000/testauth"
+
 admin-genkey:
 	go run apis/tooling/admin/main.go genkey
 
-admin-genjwt:
-	go run apis/tooling/admin/main.go genjwt
+admin-genjwt: admin-genjwt-admin-role
+
+admin-genjwt-user-role:
+	go run apis/tooling/admin/main.go genjwt USER
+
+admin-genjwt-admin-role:
+	go run apis/tooling/admin/main.go genjwt ADMIN
 
 admin-tools: admin-genkey admin-genjwt
 
