@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"slices"
+	"strings"
 	"time"
 
 	_ "embed"
@@ -44,7 +46,17 @@ func main() {
 			log.Fatalln(err)
 		}
 	case "genjwt":
-		if err := GenJWT(); err != nil {
+		role := "ADMIN"
+		if len(os.Args) == 3 {
+			role = strings.ToUpper(os.Args[2])
+		}
+
+		if !slices.Contains([]string{"ADMIN", "USER"}, role) {
+			log.Fatalln("invalid role , use ADMIN or USER")
+		}
+
+		fmt.Printf("Generating JWT for role: %s\n", role)
+		if err := GenJWT(role); err != nil {
 			log.Fatalln(err)
 		}
 	default:
@@ -52,7 +64,7 @@ func main() {
 	}
 }
 
-func GenJWT() error {
+func GenJWT(role string) error {
 
 	// ------------------------------------------------------------------------------------------------
 	// Generate the JWT
@@ -74,12 +86,12 @@ func GenJWT() error {
 		Roles []string
 	}{
 		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   "1234056",
+			Subject:   "4801b850-e70f-4b1f-8fa7-d98aa2dac6d1",
 			Issuer:    "service project",
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 8760)), // 1 year
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
-		Roles: []string{"ADMIN"},
+		Roles: []string{role},
 	}
 
 	method := jwt.SigningMethodRS256 // RSA Signature with SHA-256, algorithm RS256 used for signing the JWT
