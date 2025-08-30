@@ -15,6 +15,8 @@ import (
 	"github.com/ardanlabs/conf/v3"
 	"github.com/zucchini/services-golang/apis/services/api/debug"
 	"github.com/zucchini/services-golang/apis/services/sales/mux"
+	"github.com/zucchini/services-golang/business/api/auth"
+	"github.com/zucchini/services-golang/foundation/keystore"
 	"github.com/zucchini/services-golang/foundation/logger"
 	"github.com/zucchini/services-golang/foundation/web"
 )
@@ -67,6 +69,11 @@ func run(ctx context.Context, log *logger.Logger) error {
 			DebugHost          string        `conf:"default:0.0.0.0:3010"`
 			CORSAllowedOrigins []string      `conf:"default:*,mask"`
 		}
+		Auth struct {
+			KeysFolder string `conf:"default:zarf/keys/"`
+			ActiveKID  string `conf:"default:dc75a316-e862-45ca-a48b-0d67f229d62b"`
+			Issuer     string `conf:"default:service project"`
+		}
 	}{
 		Version: conf.Version{
 			Build: buildRef,
@@ -115,6 +122,26 @@ func run(ctx context.Context, log *logger.Logger) error {
 	}()
 
 	// -------------------------------------------------------------------------
+	// Initialize authentication support
+
+	log.Info(ctx, "startup", "status", "initializing authentication support")
+
+	// Load the private keys files from disk. We can assume some system like
+	// Vault has created these files already. How that happens is not now my
+	// concern.
+	ks := keystore.New()
+	if err := ks.LoadRSAKeys(os.DirFS(cfg.Auth.KeysFolder)); err != nil {
+		return fmt.Errorf("reading keys: %w", err)
+	}
+
+	authCfg := auth.Config{
+		Log:       log,
+		KeyLookup: ks,
+	}
+
+	a := auth.New(authCfg)
+
+	// -------------------------------------------------------------------------
 
 	// -------------------------------------------------------------------------
 	// Start API Service
@@ -129,7 +156,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 
 	api := http.Server{
 		Addr:         cfg.Web.APIHost,
-		Handler:      mux.WebAPI(shutdown, log),
+		Handler:      mux.WebAPI(shutdown, a, log),
 		ReadTimeout:  cfg.Web.ReadTimeout,
 		WriteTimeout: cfg.Web.WriteTimeout,
 		IdleTimeout:  cfg.Web.IdleTimeout,
