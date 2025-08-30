@@ -155,7 +155,7 @@ func (a *Auth) Authorize(ctx context.Context, claims Claims, userID uuid.UUID, r
 	}
 
 	if err := opaPolictyEvaluation(ctx, regoScriptAuthorization, rule, input); err != nil {
-		return fmt.Errorf("unable to evaluate authorization policy: %w", err)
+		return fmt.Errorf("unauthorized access: user with roles %v does not have %s permission", claims.Roles, rule)
 	}
 
 	// We must call the database here to see if the user is enabled.
