@@ -37,6 +37,9 @@ RUN addgroup -g 1000 -S sales && adduser -u 1000 -h /service -G sales -S sales
 
 # Copy compiled binary from builder stage with proper ownership
 COPY --from=builder --chown=sales:sales /service/apis/services/sales/sales /service/sales
+# Copy keys from builder stage
+COPY --from=builder --chown=sales:sales /service/zarf/keys/. /service/zarf/keys/.
+
 WORKDIR /service
 
 # Switch to non-root user for security
