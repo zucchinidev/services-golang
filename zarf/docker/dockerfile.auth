@@ -1,0 +1,59 @@
+# Multi-stage build for Go application
+FROM golang:1.24.3 AS builder
+
+# Disable CGO for static binary compilation
+# This ensures the binary has no external C dependencies
+ENV CGO_ENABLED=0
+
+# Build argument to inject build reference (git commit - git rev-parse HEAD, version tag, etc.)
+# Pass this during docker build: --build-arg BUILD_REF=v1.2.3
+ARG BUILD_REF
+
+COPY . /service
+
+WORKDIR /service/apis/services/auth
+
+# Build the Go application with linker flags for optimization and build info
+# -ldflags: Pass flags to the Go linker
+#   -s: Strip symbol table (removes debugging symbols, reduces binary size)
+#   -w: Strip DWARF debug information (removes debug data, further reduces size)
+#   -X main.buildRef=${BUILD_REF}: Inject BUILD_REF value into main.buildRef variable at compile time
+RUN go build -ldflags "-s -w -X main.buildRef=${BUILD_REF}"
+
+FROM alpine:3.21.0
+ARG BUILD_DATE
+ARG BUILD_REF
+
+# Create non-root user and group for security (principle of least privilege)
+# addgroup: Create system group 'auth' with GID 1000
+#   -g 1000: Set Group ID to 1000 (common convention for regular users)
+#   -S: Create system group (no login capabilities)
+# adduser: Create system user 'sales' with UID 1000
+#   -u 1000: Set User ID to 1000 (matches group ID for consistency)
+#   -h /service: Set home directory to /service
+#   -G sales: Add user to 'sales' group as primary group
+#   -S: Create system user (no password, no shell login)
+RUN addgroup -g 1000 -S auth && adduser -u 1000 -h /service -G auth -S auth
+
+# Copy compiled binary from builder stage with proper ownership
+COPY --from=builder --chown=auth:auth /service/apis/services/auth/auth /service/auth
+# Copy keys from builder stage
+COPY --from=builder --chown=auth:auth /service/zarf/keys/. /service/zarf/keys/.
+
+WORKDIR /service
+
+# Switch to non-root user for security
+USER auth
+
+# Default command to run the application
+CMD ["./auth"]
+
+# OCI image labels for metadata and traceability
+LABEL org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.title="auth-api" \
+      org.opencontainers.image.authors="Andrea Zucchini <zucchinidev@protonmail.com>" \
+      org.opencontainers.image.source="https://github.com/zucchini/services-golang/apis/services/auth" \
+      org.opencontainers.image.revision="${BUILD_REF}" \
+      org.opencontainers.image.vendor="Zucchini" \
+      org.opencontainers.image.version="${BUILD_REF}" \
+      org.opencontainers.image.licenses="MIT"

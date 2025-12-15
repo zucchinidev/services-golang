@@ -1,0 +1,84 @@
+---
+
+# This file defines the sales-system namespace and the auth related resources
+
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sales-system
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  namespace: sales-system
+
+spec:
+  selector:
+    matchLabels:
+      app: auth
+
+  template:
+    metadata:
+      labels:
+        app: auth
+    spec:
+      terminationGracePeriodSeconds: 60
+
+      containers:
+      - name: auth
+        image: auth-image
+        ports:
+        - name: auth
+          containerPort: 6000
+        - name: auth-debug
+          containerPort: 6010
+
+
+        readinessProbe: # readiness probe mark the service available to accept traffic
+          httpGet:
+            path: /readiness
+            port: auth
+          initialDelaySeconds: 2
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 2
+          successThreshold: 1
+
+          
+        livenessProbe: # liveness probe mark the service alive or dead ( to be restarted )
+          httpGet:
+            path: /liveness
+            port: auth
+          initialDelaySeconds: 2
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 2
+          successThreshold: 1
+
+        env:
+        - name: GOMAXPROCS
+          valueFrom:
+            resourceFieldRef:
+              # It will use a math ceiling function to round up the number of CPUs to the nearest integer.
+              # This is a way to ensure that the container is not using more than the available CPUs.
+              # When k8s reads the limits.cpu field in the definition, it passes from 250m to 0.250.
+              # So, it will set the GOMAXPROCS to 1 after the ceiling function.
+              # We want to avoid context switching between the Go runtime and the OS.
+              resource: limits.cpu
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: sales-system
+
+spec:
+  selector:
+    app: auth
+  type: ClusterIP
