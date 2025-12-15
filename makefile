@@ -55,6 +55,15 @@ admin-genjwt-admin-role:
 
 admin-tools: admin-genkey admin-genjwt
 
+token:
+	curl -il \
+	--user "admin@example.com:gophers" http://localhost:6000/auth/token/dc75a316-e862-45ca-a48b-0d67f229d62b
+
+curl-test-auth-service:
+	curl -il \
+	-H "Authorization: Bearer ${TOKEN}" "http://localhost:6000/auth/authenticate"
+
+
 # ==============================================================================
 # Define dependencies
 
@@ -82,7 +91,7 @@ AUTH_IMAGE      := $(BASE_IMAGE_NAME)/$(AUTH_APP):$(VERSION)
 # ==============================================================================
 # Running from within k8s/kind
 
-build: sales
+build: sales auth
 
 sales:
 	docker build \
@@ -92,6 +101,13 @@ sales:
 		-f zarf/docker/dockerfile.sales \
 		.
 
+auth:
+	docker build \
+		--build-arg BUILD_REF=$(VERSION) \
+		--build-arg BUILD_DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ") \
+		-t $(AUTH_IMAGE) \
+		-f zarf/docker/dockerfile.auth \
+		.
 dev-up:
 
 
@@ -129,24 +145,35 @@ dev-load:
 	# - --name: Specify which cluster to load into
 	# - $(KIND_CLUSTER): The name of our Kind cluster
 	kind load docker-image $(SALES_IMAGE) --name $(KIND_CLUSTER)
+	kind load docker-image $(AUTH_IMAGE) --name $(KIND_CLUSTER)
 
 dev-apply:
+	kustomize build zarf/k8s/dev/auth | kubectl apply -f -
+	kubectl wait pods --namespace=$(NAMESPACE) --for=condition=Ready --timeout=120s --selector app=$(AUTH_APP)
+
 	kustomize build zarf/k8s/dev/sales | kubectl apply -f -
 	kubectl wait pods --namespace=$(NAMESPACE) --for=condition=Ready --timeout=120s --selector app=$(SALES_APP)
 
 dev-restart:
 	kubectl rollout restart deployment $(SALES_APP) --namespace=$(NAMESPACE)
+	kubectl rollout restart deployment $(AUTH_APP) --namespace=$(NAMESPACE)
 
 dev-update: build dev-load dev-apply dev-restart
 
 dev-logs:
 	kubectl logs --namespace=$(NAMESPACE) --selector app=$(SALES_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run apis/tooling/logfmt/main.go
 
+dev-logs-auth:
+	kubectl logs --namespace=$(NAMESPACE) --selector app=$(AUTH_APP) --all-containers=true -f --tail=100 --max-log-requests=6 | go run apis/tooling/logfmt/main.go
+
 dev-describe-deployment:
 	kubectl describe deployment $(SALES_APP) --namespace=$(NAMESPACE)
 
 dev-describe-sales:
 	kubectl describe pod --selector app=$(SALES_APP) --namespace=$(NAMESPACE)
+
+dev-describe-auth:
+	kubectl describe pod --selector app=$(AUTH_APP) --namespace=$(NAMESPACE)
 
 
 # ==============================================================================
