@@ -15,8 +15,7 @@ import (
 	"github.com/ardanlabs/conf/v3"
 	"github.com/zucchini/services-golang/apis/services/api/debug"
 	"github.com/zucchini/services-golang/apis/services/sales/mux"
-	"github.com/zucchini/services-golang/business/api/auth"
-	"github.com/zucchini/services-golang/foundation/keystore"
+	"github.com/zucchini/services-golang/app/api/authclient"
 	"github.com/zucchini/services-golang/foundation/logger"
 	"github.com/zucchini/services-golang/foundation/web"
 )
@@ -70,9 +69,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 			CORSAllowedOrigins []string      `conf:"default:*,mask"`
 		}
 		Auth struct {
-			KeysFolder string `conf:"default:zarf/keys/"`
-			ActiveKID  string `conf:"default:dc75a316-e862-45ca-a48b-0d67f229d62b"`
-			Issuer     string `conf:"default:service project"`
+			Host string `conf:"default:http://auth-service.sales-system.svc.cluster.local:6000"`
 		}
 	}{
 		Version: conf.Version{
@@ -109,7 +106,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 	// Start Debug Service
 
 	go func() {
-		// This is creating an orphane goroutine that will run until the service shuts down.
+		// This is creating an orphaned goroutine that will run until the service shuts down.
 		// As a general rule, we don't want to start a goroutine that will be orphaned.
 		// When I say orphaned, it is because I understand that there has to be a kind of parenting
 		// relationship between the goroutine and the service.
@@ -125,21 +122,11 @@ func run(ctx context.Context, log *logger.Logger) error {
 	// Initialize authentication support
 
 	log.Info(ctx, "startup", "status", "initializing authentication support")
-
-	// Load the private keys files from disk. We can assume some system like
-	// Vault has created these files already. How that happens is not now my
-	// concern.
-	ks := keystore.New()
-	if err := ks.LoadRSAKeys(os.DirFS(cfg.Auth.KeysFolder)); err != nil {
-		return fmt.Errorf("reading keys: %w", err)
+	fnLog := func(ctx context.Context, format string, args ...any) {
+		log.Info(ctx, "authapi", format, args)
 	}
 
-	authCfg := auth.Config{
-		Log:       log,
-		KeyLookup: ks,
-	}
-
-	a := auth.New(authCfg)
+	authClient := authclient.New(cfg.Auth.Host, fnLog)
 
 	// -------------------------------------------------------------------------
 
@@ -156,7 +143,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 
 	api := http.Server{
 		Addr:         cfg.Web.APIHost,
-		Handler:      mux.WebAPI(shutdown, a, log),
+		Handler:      mux.WebAPI(shutdown, authClient, log),
 		ReadTimeout:  cfg.Web.ReadTimeout,
 		WriteTimeout: cfg.Web.WriteTimeout,
 		IdleTimeout:  cfg.Web.IdleTimeout,
@@ -195,7 +182,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 		// Do not accept any more traffic and wait for the requests to finish their execution.
 		if err := api.Shutdown(ctx); err != nil {
 			// If there is any goroutine that is blocked, we need to shut it down everything using force.
-			api.Close()
+			_ = api.Close()
 			return fmt.Errorf("could not stop server gracefully: %w", err)
 		}
 	}

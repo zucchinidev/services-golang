@@ -138,6 +138,7 @@ func run(ctx context.Context, log *logger.Logger) error {
 	authCfg := auth.Config{
 		Log:       log,
 		KeyLookup: ks,
+		Issuer:    cfg.Auth.Issuer,
 	}
 
 	a := auth.New(authCfg)

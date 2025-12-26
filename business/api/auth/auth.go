@@ -135,7 +135,7 @@ func (a *Auth) Authenticate(ctx context.Context, bearerToken string) (Claims, er
 
 	fmt.Printf("input: %+v\n", input)
 
-	if err := opaPolictyEvaluation(ctx, regoScriptAuthentication, RuleAuthenticate, input); err != nil {
+	if err := opaPolicyEvaluation(ctx, regoScriptAuthentication, RuleAuthenticate, input); err != nil {
 		return Claims{}, fmt.Errorf("unable to evaluate authentication policy: %w", err)
 	}
 
@@ -154,7 +154,7 @@ func (a *Auth) Authorize(ctx context.Context, claims Claims, userID uuid.UUID, r
 		"Rule":    rule,
 	}
 
-	if err := opaPolictyEvaluation(ctx, regoScriptAuthorization, rule, input); err != nil {
+	if err := opaPolicyEvaluation(ctx, regoScriptAuthorization, rule, input); err != nil {
 		return fmt.Errorf("unauthorized access: user with roles %v does not have %s permission", claims.Roles, rule)
 	}
 
@@ -163,7 +163,7 @@ func (a *Auth) Authorize(ctx context.Context, claims Claims, userID uuid.UUID, r
 	return nil
 }
 
-func opaPolictyEvaluation(ctx context.Context, regoScript string, rule string, input map[string]any) error {
+func opaPolicyEvaluation(ctx context.Context, regoScript string, rule string, input map[string]any) error {
 
 	query := fmt.Sprintf("x = data.%s.%s", opaPackage, rule)
 

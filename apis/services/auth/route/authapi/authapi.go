@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/google/uuid"
+	"github.com/zucchini/services-golang/app/api/authclient"
 	"github.com/zucchini/services-golang/app/api/errs"
 	"github.com/zucchini/services-golang/app/api/mid"
 	"github.com/zucchini/services-golang/business/api/auth"
@@ -53,10 +53,7 @@ func (a *api) authenticate(ctx context.Context, w http.ResponseWriter, r *http.R
 		return errs.New(errs.Unauthenticated, err)
 	}
 
-	resp := struct {
-		UserID uuid.UUID   `json:"user_id"`
-		Claims auth.Claims `json:"claims"`
-	}{
+	resp := authclient.AuthenticateResp{
 		UserID: userID,
 		Claims: mid.GetClaims(ctx),
 	}
@@ -65,11 +62,7 @@ func (a *api) authenticate(ctx context.Context, w http.ResponseWriter, r *http.R
 }
 
 func (a *api) authorize(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	var auth struct {
-		Claims auth.Claims
-		UserID uuid.UUID
-		Rule   string
-	}
+	var auth authclient.Authorize
 
 	if err := web.Decode(r, &auth); err != nil {
 		return errs.New(errs.FailedPrecondition, err)
@@ -79,5 +72,5 @@ func (a *api) authorize(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return errs.Newf(errs.Unauthenticated, "authorize: you are not authorized for that action, claims [%v], rule [%v] %v", auth.Claims, auth.Rule, err)
 	}
 
-	return web.Respond(ctx, w, auth, http.StatusOK)
+	return web.Respond(ctx, w, nil, http.StatusNoContent)
 }

@@ -9,19 +9,32 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/zucchini/services-golang/app/api/authclient"
 
 	"github.com/zucchini/services-golang/app/api/errs"
 	"github.com/zucchini/services-golang/business/api/auth"
 )
 
-func Authenticate(ctx context.Context, auth *auth.Auth, authorization string, handler Handler) error {
+func AuthenticateOnServer(ctx context.Context, authClient *authclient.Client, authorization string, handler Handler) error {
+	resp, err := authClient.Authenticate(ctx, authorization)
+	if err != nil {
+		return errs.New(errs.Unauthenticated, err)
+	}
+
+	ctx = setUserID(ctx, resp.UserID)
+	ctx = setClaims(ctx, resp.Claims)
+
+	return handler(ctx)
+}
+
+func AuthenticateLocal(ctx context.Context, a *auth.Auth, authorization string, handler Handler) error {
 	var err error
 
 	parts := strings.Split(authorization, " ")
 
 	switch parts[0] {
 	case "Bearer":
-		ctx, err = processJWT(ctx, auth, authorization)
+		ctx, err = processJWT(ctx, a, authorization)
 		if err != nil {
 			return err
 		}
@@ -37,8 +50,8 @@ func Authenticate(ctx context.Context, auth *auth.Auth, authorization string, ha
 	return handler(ctx)
 }
 
-func processJWT(ctx context.Context, auth *auth.Auth, token string) (context.Context, error) {
-	claims, err := auth.Authenticate(ctx, token)
+func processJWT(ctx context.Context, a *auth.Auth, token string) (context.Context, error) {
+	claims, err := a.Authenticate(ctx, token)
 	if err != nil {
 		return ctx, err
 	}
