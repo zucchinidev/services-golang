@@ -146,8 +146,14 @@ dev-load:
 	# - $(KIND_CLUSTER): The name of our Kind cluster
 	kind load docker-image $(SALES_IMAGE) --name $(KIND_CLUSTER)
 	kind load docker-image $(AUTH_IMAGE) --name $(KIND_CLUSTER)
+	# Load postgres using manual ctr import to avoid multi-platform manifest issues
+	docker save $(POSTGRES) | docker exec -i $(KIND_CLUSTER)-control-plane ctr --namespace=k8s.io images import -
 
 dev-apply:
+	kustomize build zarf/k8s/dev/database | kubectl apply -f -
+	# It is a StatefulSet --> sts/database
+	kubectl rollout status --namespace=$(NAMESPACE) --watch --timeout=120s sts/database
+
 	kustomize build zarf/k8s/dev/auth | kubectl apply -f -
 	kubectl wait pods --namespace=$(NAMESPACE) --for=condition=Ready --timeout=120s --selector app=$(AUTH_APP)
 
@@ -174,6 +180,9 @@ dev-describe-sales:
 
 dev-describe-auth:
 	kubectl describe pod --selector app=$(AUTH_APP) --namespace=$(NAMESPACE)
+
+dev-images:
+	docker exec $(KIND_CLUSTER)-control-plane crictl images
 
 
 # ==============================================================================
