@@ -18,9 +18,11 @@ version:
 
 curl-liveness:
 	curl -il -X GET http://localhost:3000/liveness
+	curl -il -X GET http://localhost:6000/liveness
 
 curl-readiness:
 	curl -il -X GET http://localhost:3000/readiness
+	curl -il -X GET http://localhost:6000/readiness
 
 curl-test-error:
 	curl -il -X GET http://localhost:3000/testerror
@@ -193,6 +195,18 @@ metrics:
 
 statsviz:
 	open -a "Google Chrome" http://localhost:3010/debug/statsviz
+
+# ==============================================================================
+# Administration
+
+migrate:
+	export SALES_DB_HOST_PORT=localhost; go run apis/tooling/admin/main.go migrate
+
+seed:
+	export SALES_DB_HOST_PORT=localhost; go run apis/tooling/admin/main.go migrate
+
+pgcli:
+	docker run -it --rm --network kind $(POSTGRES) psql postgres://postgres:postgres@sales-starter-cluster-control-plane:5432/postgres
 
 # ==============================================================================
 # Modules support
