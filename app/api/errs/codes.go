@@ -112,12 +112,12 @@ type ErrCode struct {
 }
 
 // Value returns the integer value of the error code.
-func (ec ErrCode) Value() int {
+func (ec *ErrCode) Value() int {
 	return ec.value
 }
 
 // String returns the string representation of the error code.
-func (ec ErrCode) String() string {
+func (ec *ErrCode) String() string {
 	return codeNames[ec.value]
 }
 
@@ -136,12 +136,12 @@ func (ec *ErrCode) UnmarshalText(data []byte) error {
 }
 
 // MarshalText implement the marshal interface for JSON conversions.
-func (ec ErrCode) MarshalText() ([]byte, error) {
+func (ec *ErrCode) MarshalText() ([]byte, error) {
 	return []byte(ec.String()), nil
 }
 
 // Equal provides support for the go-cmp package and testing.
-func (ec ErrCode) Equal(ec2 ErrCode) bool {
+func (ec *ErrCode) Equal(ec2 ErrCode) bool {
 	return ec.value == ec2.value
 }
 

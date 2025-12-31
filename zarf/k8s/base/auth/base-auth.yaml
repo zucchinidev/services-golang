@@ -70,6 +70,47 @@ spec:
               # We want to avoid context switching between the Go runtime and the OS.
               resource: limits.cpu
 
+        - name: SALES_DB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: db_user
+              optional: true
+        - name: SALES_DB_PASSWORD
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: db_password
+              optional: true
+        - name: SALES_DB_HOST_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: db_host_port
+              optional: true
+        - name: SALES_DB_DISABLE_TLS
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: db_disable_tls
+              optional: true
+
+        - name: KUBERNETES_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: KUBERNETES_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: KUBERNETES_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: KUBERNETES_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
 ---
 
 apiVersion: v1

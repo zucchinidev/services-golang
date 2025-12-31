@@ -4,6 +4,7 @@ kind: Kustomization
 
 resources:
 - ../../base/auth/
+- ./dev-auth-configmap.yaml
 
 patches:
   - path: dev-auth-patch-deploy.yaml

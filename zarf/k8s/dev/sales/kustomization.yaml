@@ -4,6 +4,7 @@ kind: Kustomization
 
 resources:
 - ../../base/sales/
+- ./dev-sales-configmap.yaml
 
 patches:
 - path: dev-sales-patch-deploy.yaml

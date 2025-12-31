@@ -44,7 +44,7 @@ func (a *api) token(ctx context.Context, w http.ResponseWriter, r *http.Request)
 	return web.Respond(ctx, w, token, http.StatusOK)
 }
 
-func (a *api) authenticate(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+func (a *api) authenticate(ctx context.Context, w http.ResponseWriter, _ *http.Request) error {
 	// This middleware is actually handling the authentication. So if the code
 	// gets to this handler, authentication passed.
 

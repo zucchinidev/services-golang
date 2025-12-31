@@ -36,7 +36,7 @@ func NewApp(shutdown chan os.Signal, mw ...MidHandler) *App {
 	}
 }
 
-// SignalShutdown is used to gracefully shutdown the app when an integrity issue is identified.
+// SignalShutdown is used to gracefully Shutdown the app when an integrity issue is identified.
 func (a *App) SignalShutdown() {
 	a.shutdown <- syscall.SIGTERM
 }
@@ -74,11 +74,11 @@ func (a *App) generateHandlerFunc(handler Handler) http.HandlerFunc {
 
 		if err := handler(ctx, w, r); err != nil {
 
-			// This error could happen when we send the shutdown signal or we cannot write down to the pipe.
+			// This error could happen when we send the Shutdown signal or we cannot write down to the pipe.
 			// This is because the manage the errors down to the handler level.
 
 			if validateError(err) {
-				// We prefer to shutdown the server gracefully
+				// We prefer to Shutdown the server gracefully
 				// rather than have the server in an inconsistent state.
 				// It is a tough call, but I think this is the best choice.
 				// It is better to restart than to have corrumpted file systems, data, etc.
@@ -94,7 +94,7 @@ func (a *App) generateHandlerFunc(handler Handler) http.HandlerFunc {
 }
 
 // validateError validates the error for special conditions that do not
-// warrant an actual shutdown by the system.
+// warrant an actual Shutdown by the system.
 func validateError(err error) bool {
 
 	// Ignore syscall.EPIPE and syscall.ECONNRESET errors which occurs
